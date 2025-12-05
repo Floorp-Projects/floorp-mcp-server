@@ -1,0 +1,40 @@
+{
+    "name": "@floorp/mcp-server",
+    "version": "0.1.0",
+    "description": "MCP Server bridge for Floorp Server",
+    "type": "module",
+    "bin": {
+        "floorp-mcp-server": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "tsx src/index.ts",
+        "test:client": "tsx test/test-client.ts"
+    },
+    "license": "MPL-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Floorp-Projects/floorp-mcp-server.git"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.1",
+        "node-fetch": "^3.3.2",
+        "zod": "^3.23.8"
+    },
+    "devDependencies": {
+        "@types/node": "^20.12.7",
+        "@types/node-fetch": "^2.6.11",
+        "ts-node": "^10.9.2",
+        "tsx": "^4.21.0",
+        "typescript": "^5.4.5"
+    }
+}
