@@ -19,7 +19,7 @@ It allows AI assistants to interact with Floorp to:
 ### npx
 
 ```bash
-npx -y @floorp/mcp-server
+npx -y floorp-mcp-server
 ```
 
 ### Configuration (Claude Desktop / generic)
