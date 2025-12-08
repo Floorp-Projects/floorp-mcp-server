@@ -1,6 +1,6 @@
 {
     "name": "floorp-mcp-server",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "MCP Server bridge for Floorp Server",
     "type": "module",
     "bin": {
