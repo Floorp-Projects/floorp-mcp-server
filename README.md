@@ -31,8 +31,9 @@ Add to your MCP config:
   "mcpServers": {
     "floorp": {
       "command": "npx",
-      "args": ["-y", "@floorp/mcp-server"]
+      "args": ["-y", "floorp-mcp-server"]
     }
   }
 }
+
 ```
