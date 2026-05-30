@@ -4,10 +4,10 @@
     "description": "MCP Server bridge for Floorp Server",
     "type": "module",
     "bin": {
-        "floorp-mcp-server": "./dist/index.js"
+        "floorp-mcp-server": "dist/index.js"
     },
     "scripts": {
-        "build": "tsc",
+        "build": "tsc && chmod +x dist/index.js",
         "start": "node dist/index.js",
         "dev": "tsx src/index.ts",
         "test:client": "tsx test/test-client.ts"
