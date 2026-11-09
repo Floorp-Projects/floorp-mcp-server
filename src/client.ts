@@ -28,13 +28,32 @@ import type {
   ExistsResponse,
 } from "./api-types.js";
 import {
+  isHeaderSafeToken,
   resolvePort,
-  resolveToken,
+  resolveTokenWithSource,
   TOKEN_ENV,
-  tokenFilePath,
+  TOKEN_FILE_DISPLAY,
+  type TokenSource,
 } from "./auth.js";
 
 // -- Helpers -----------------------------------------------------------------
+
+/**
+ * What to tell the user after a 401, naming the token source that was used.
+ * Uses the `~` path so the OS user name does not reach the model.
+ */
+export function unauthorizedHint(source: TokenSource | "explicit"): string {
+  switch (source) {
+    case "env":
+      return ` (the token from ${TOKEN_ENV} was rejected; unset it to use ${TOKEN_FILE_DISPLAY}, or set it to the running Floorp's token)`;
+    case "file":
+      return ` (the token in ${TOKEN_FILE_DISPLAY} was rejected; it may belong to another Floorp instance, restart the Floorp you want to control or set ${TOKEN_ENV})`;
+    case "explicit":
+      return " (the token passed to FloorpClient was rejected)";
+    case "none":
+      return ` (the OS-Server requires a bearer token: start Floorp so it writes ${TOKEN_FILE_DISPLAY}, or set ${TOKEN_ENV})`;
+  }
+}
 
 type HttpMethod = "GET" | "POST" | "DELETE";
 
@@ -90,13 +109,24 @@ export class FloorpClient {
     return qs ? `?${qs}` : "";
   }
 
+  /** The token to send and where it came from (the token is never logged). */
+  private resolveAuth(): { token: string; source: TokenSource | "explicit" } {
+    if (this.token === undefined) return resolveTokenWithSource();
+    if (this.token && !isHeaderSafeToken(this.token)) {
+      throw new Error(
+        "The OS-Server token passed to FloorpClient contains characters that cannot be sent in an HTTP header.",
+      );
+    }
+    return { token: this.token, source: "explicit" };
+  }
+
   private async request<T>(
     method: HttpMethod,
     path: string,
     body?: unknown,
   ): Promise<T> {
     const headers: Record<string, string> = {};
-    const token = this.token ?? resolveToken();
+    const { token, source } = this.resolveAuth();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -119,9 +149,7 @@ export class FloorpClient {
 
     if (!response.ok) {
       const text = await response.text();
-      const hint = response.status === 401
-        ? ` (the OS-Server requires a bearer token: set ${TOKEN_ENV}, or make sure ${tokenFilePath()} exists and matches the running browser)`
-        : "";
+      const hint = response.status === 401 ? unauthorizedHint(source) : "";
       throw new Error(`Floorp API Error ${response.status}: ${text}${hint}`);
     }
 

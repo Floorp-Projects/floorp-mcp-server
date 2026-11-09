@@ -5,12 +5,16 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { test } from "node:test";
+import { homedir } from "node:os";
 import {
   DEFAULT_PORT,
+  isHeaderSafeToken,
   resolvePort,
   resolveToken,
+  resolveTokenWithSource,
   tokenFilePath,
 } from "../src/auth.js";
+import { unauthorizedHint } from "../src/client.js";
 
 const HOME = join("home", "tester");
 
@@ -58,4 +62,48 @@ test("FLOORP_OS_PORT accepts only valid ports", () => {
   for (const bad of ["0", "65536", "abc", "-1", "1e3", ""]) {
     assert.equal(resolvePort({ FLOORP_OS_PORT: bad }), DEFAULT_PORT, bad);
   }
+});
+
+test("tokens with header-unsafe characters are refused without echoing them", () => {
+  const secret = "abc\ndef";
+  for (const [env, file] of [
+    [{ FLOORP_OS_TOKEN: secret }, "unused"],
+    [{}, `${secret}\r\n`],
+    [{}, "tok en"],
+    [{}, "tökén"],
+  ] as const) {
+    assert.throws(
+      () => resolveTokenWithSource({ env, home: HOME, readFile: () => file }),
+      (error: unknown) =>
+        error instanceof Error &&
+        !error.message.includes("abc") &&
+        !error.message.includes("def") &&
+        /cannot be sent in an HTTP header/.test(error.message),
+    );
+  }
+  assert.equal(isHeaderSafeToken("3f2b8c1e-0d4a-4e5f-9a6b-7c8d9e0f1a2b"), true);
+});
+
+test("CRLF and BOM around a file token are trimmed; the source is reported", () => {
+  assert.deepEqual(
+    resolveTokenWithSource({ env: {}, home: HOME, readFile: () => "﻿abc\r\n" }),
+    { token: "abc", source: "file" },
+  );
+  assert.deepEqual(
+    resolveTokenWithSource({ env: { FLOORP_OS_TOKEN: "xyz" }, home: HOME }),
+    { token: "xyz", source: "env" },
+  );
+  assert.deepEqual(
+    resolveTokenWithSource({ env: {}, home: HOME, readFile: () => "  \n" }),
+    { token: "", source: "none" },
+  );
+});
+
+test("401 hints name the token source and never the home directory", () => {
+  for (const source of ["env", "file", "explicit", "none"] as const) {
+    const hint = unauthorizedHint(source);
+    assert.ok(!hint.includes(homedir()), `${source}: ${hint}`);
+  }
+  assert.match(unauthorizedHint("env"), /FLOORP_OS_TOKEN was rejected/);
+  assert.match(unauthorizedHint("file"), /~\/\.floorp\/os-server-token was rejected/);
 });
