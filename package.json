@@ -10,7 +10,8 @@
         "build": "tsc && chmod +x dist/index.js",
         "start": "node dist/index.js",
         "dev": "tsx src/index.ts",
-        "test:client": "tsx test/test-client.ts"
+        "test:client": "tsx test/test-client.ts",
+        "test": "tsx --test test/auth.test.ts"
     },
     "license": "MPL-2.0",
     "repository": {
