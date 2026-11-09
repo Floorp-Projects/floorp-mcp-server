@@ -27,6 +27,12 @@ import type {
   InstanceIdResponse,
   ExistsResponse,
 } from "./api-types.js";
+import {
+  resolvePort,
+  resolveToken,
+  TOKEN_ENV,
+  tokenFilePath,
+} from "./auth.js";
 
 // -- Helpers -----------------------------------------------------------------
 
@@ -36,9 +42,17 @@ type HttpMethod = "GET" | "POST" | "DELETE";
 
 export class FloorpClient {
   private baseUrl: string;
-  private token: string;
+  /** Explicit token; when undefined the token is resolved per request. */
+  private token: string | undefined;
 
-  constructor(port: number = 58261, token: string = "") {
+  /**
+   * @param port OS-Server port (default: `FLOORP_OS_PORT` or 58261).
+   * @param token Bearer token. When omitted, each request uses
+   *   `FLOORP_OS_TOKEN` or the browser's `~/.floorp/os-server-token`, read at
+   *   request time so a browser started (or a token regenerated) after this
+   *   process still works.
+   */
+  constructor(port: number = resolvePort(), token?: string) {
     this.baseUrl = `http://127.0.0.1:${port}`;
     this.token = token;
   }
@@ -82,8 +96,9 @@ export class FloorpClient {
     body?: unknown,
   ): Promise<T> {
     const headers: Record<string, string> = {};
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+    const token = this.token ?? resolveToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
     if (body) {
       headers["Content-Type"] = "application/json";
@@ -104,7 +119,10 @@ export class FloorpClient {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Floorp API Error ${response.status}: ${text}`);
+      const hint = response.status === 401
+        ? ` (the OS-Server requires a bearer token: set ${TOKEN_ENV}, or make sure ${tokenFilePath()} exists and matches the running browser)`
+        : "";
+      throw new Error(`Floorp API Error ${response.status}: ${text}${hint}`);
     }
 
     return response.json() as Promise<T>;
